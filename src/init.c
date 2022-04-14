@@ -2688,6 +2688,8 @@ static void init(void) {
             xnn_params.f32.gemm.generator.igemm = xnn_init_hmp_igemm_codegen(xnn_generate_f32_igemm_ukernel_6x8__aarch64_neonfma_prfm_cortex_a75);
             xnn_params.f32.gemm.generator.gemm1 = xnn_init_hmp_gemm_codegen(xnn_generate_f32_gemm_ukernel_1x8__aarch64_neonfma_prfm_cortex_a75);
             xnn_params.f32.gemm.generator.igemm1 = xnn_init_hmp_igemm_codegen(xnn_generate_f32_igemm_ukernel_1x8__aarch64_neonfma_prfm_cortex_a75);
+            xnn_params.f32.gemm.generator.mr_gemm = xnn_init_hmp_mr_gemm_codegen(xnn_generate_f32_gemm_ukernel_nx8__aarch64_neonfma_prfm_cortex_a75);
+            xnn_params.f32.gemm.generator.mr_igemm = xnn_init_hmp_mr_igemm_codegen(xnn_generate_f32_igemm_ukernel_nx8__aarch64_neonfma_prfm_cortex_a75);
           #endif
           break;
         case cpuinfo_uarch_exynos_m1:

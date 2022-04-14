@@ -3802,8 +3802,12 @@ struct jit_gemm_params {
 
 typedef enum xnn_status (*xnn_jit_gemm_code_generator_function)(
     struct xnn_code_buffer *code, size_t nc, size_t kc, const void *params);
+typedef enum xnn_status (*xnn_jit_mr_gemm_code_generator_function)(
+    struct xnn_code_buffer *code, size_t mr, size_t nc, size_t kc, const void *params);
 typedef enum xnn_status (*xnn_jit_igemm_code_generator_function)(
     struct xnn_code_buffer *code, size_t nc, size_t kc, size_t ks, const void *params);
+typedef enum xnn_status (*xnn_jit_mr_igemm_code_generator_function)(
+    struct xnn_code_buffer *code, size_t mr, size_t nc, size_t kc, size_t ks, const void *params);
 
 struct xnn_hmp_gemm_ukernel {
   xnn_gemm_ukernel_function function[XNN_MAX_UARCH_TYPES];
@@ -3889,7 +3893,8 @@ struct xnn_hmp_gemm_codegen {
   xnn_jit_gemm_code_generator_function function[XNN_MAX_UARCH_TYPES];
 };
 
-static inline struct xnn_hmp_gemm_codegen xnn_init_hmp_gemm_codegen(xnn_jit_gemm_code_generator_function function) {
+static inline struct xnn_hmp_gemm_codegen xnn_init_hmp_gemm_codegen(xnn_jit_gemm_code_generator_function function)
+{
   struct xnn_hmp_gemm_codegen ukernel = {{ function }};
   for (size_t i = 1; i < XNN_MAX_UARCH_TYPES; i++) {
     ukernel.function[i] = function;
@@ -3935,12 +3940,70 @@ static inline bool xnn_is_hmp_igemm_codegen(struct xnn_hmp_igemm_codegen ukernel
 #endif
 }
 
+struct xnn_hmp_mr_gemm_codegen {
+  xnn_jit_mr_gemm_code_generator_function function[XNN_MAX_UARCH_TYPES];
+#if XNN_PLATFORM_JIT
+  size_t generated_code_offset[XNN_MAX_UARCH_TYPES];
+#endif  // XNN_PLATFORM_JIT
+};
+
+static inline struct xnn_hmp_mr_gemm_codegen xnn_init_hmp_mr_gemm_codegen(
+  xnn_jit_mr_gemm_code_generator_function function)
+{
+  struct xnn_hmp_mr_gemm_codegen ukernel = {{ function }};
+  for (size_t i = 1; i < XNN_MAX_UARCH_TYPES; i++) {
+    ukernel.function[i] = function;
+  }
+  return ukernel;
+}
+
+static inline bool xnn_is_hmp_mr_gemm_codegen(struct xnn_hmp_mr_gemm_codegen ukernel) {
+#if XNN_MAX_UARCH_TYPES == 1
+  return false;
+#else
+  uintptr_t default_function = (uintptr_t) ukernel.function[XNN_UARCH_DEFAULT];
+  uintptr_t difference = 0;
+  for (size_t i = 1; i < XNN_MAX_UARCH_TYPES; i++) {
+    difference |= (default_function ^ (uintptr_t) ukernel.function[i]);
+  }
+  return difference != 0;
+#endif
+}
+
+struct xnn_hmp_mr_igemm_codegen {
+  xnn_jit_mr_igemm_code_generator_function function[XNN_MAX_UARCH_TYPES];
+};
+
+static inline struct xnn_hmp_mr_igemm_codegen xnn_init_hmp_mr_igemm_codegen(xnn_jit_mr_igemm_code_generator_function function) {
+  struct xnn_hmp_mr_igemm_codegen ukernel = {{ function }};
+  for (size_t i = 1; i < XNN_MAX_UARCH_TYPES; i++) {
+    ukernel.function[i] = function;
+  }
+  return ukernel;
+}
+
+static inline bool xnn_is_hmp_mr_igemm_codegen(struct xnn_hmp_mr_igemm_codegen ukernel) {
+#if XNN_MAX_UARCH_TYPES == 1
+  return false;
+#else
+  uintptr_t default_function = (uintptr_t) ukernel.function[XNN_UARCH_DEFAULT];
+  uintptr_t difference = 0;
+  for (size_t i = 1; i < XNN_MAX_UARCH_TYPES; i++) {
+    difference |= (default_function ^ (uintptr_t) ukernel.function[i]);
+  }
+  return difference != 0;
+#endif
+}
+
 struct gemm_codegens {
   struct xnn_hmp_gemm_codegen gemm;
   struct xnn_hmp_igemm_codegen igemm;
   // Optional JIT GEMM and IGEMM micro-kernels with MR=1 and the same NR and KR parameters.
   struct xnn_hmp_gemm_codegen gemm1;
   struct xnn_hmp_igemm_codegen igemm1;
+  // Optional JIT GEMM and IGEMM micro-kernels that are specialized to specific MR values, up to MR = 6.
+  struct xnn_hmp_mr_gemm_codegen mr_gemm;
+  struct xnn_hmp_mr_igemm_codegen mr_igemm;
 };
 #endif  // XNN_PLATFORM_JIT
 
